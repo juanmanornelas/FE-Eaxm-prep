@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="FE Tracker">
+<meta name="theme-color" content="#f0a030">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>FE Mechanical — Study Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f0f0f; --bg2: #181818; --bg3: #222222;
+    --border: rgba(255,255,255,0.07); --border2: rgba(255,255,255,0.13);
+    --text: #e8e6e0; --text2: #9a9890; --text3: #5a5856;
+    --amber: #f0a030; --amber-dim: rgba(240,160,48,0.12); --amber-glow: rgba(240,160,48,0.25);
+    --green: #4caf78; --green-dim: rgba(76,175,120,0.12);
+    --red: #e05050; --blue: #5090e0; --blue-dim: rgba(80,144,224,0.12);
+    --radius: 10px; --radius-sm: 6px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 15px; min-height: 100vh; padding-bottom: 80px; }
+
+  /* Header */
+  .header { padding: 20px 20px 14px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--bg); z-index: 100; }
+  .header-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; }
+  .title { font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 0.08em; color: var(--amber); text-transform: uppercase; margin-bottom: 2px; }
+  .subtitle { font-size: 20px; font-weight: 600; }
+  .header-right { display: flex; gap: 8px; align-items: flex-start; }
+  .streak-badge { display: flex; flex-direction: column; align-items: center; background: var(--amber-dim); border: 1px solid var(--amber-glow); border-radius: var(--radius-sm); padding: 6px 10px; min-width: 50px; cursor: pointer; }
+  .streak-num { font-family: 'DM Mono', monospace; font-size: 20px; font-weight: 500; color: var(--amber); line-height: 1; }
+  .streak-label { font-size: 9px; color: var(--amber); opacity: 0.7; text-transform: uppercase; letter-spacing: 0.06em; margin-top: 2px; }
+  .notif-btn { width: 38px; height: 38px; border-radius: var(--radius-sm); border: 1px solid var(--border2); background: transparent; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 18px; transition: all 0.15s; }
+  .notif-btn.active { background: var(--amber-dim); border-color: var(--amber-glow); }
+
+  /* Progress */
+  .progress-row { display: flex; justify-content: space-between; margin-bottom: 5px; }
+  .progress-label { font-size: 12px; color: var(--text2); }
+  .progress-pct { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--amber); }
+  .progress-track { height: 3px; background: var(--bg3); border-radius: 2px; overflow: hidden; }
+  .progress-fill { height: 100%; background: var(--amber); border-radius: 2px; transition: width 0.4s ease; }
+
+  /* Notification panel */
+  .notif-panel { display: none; position: fixed; inset: 0; z-index: 200; background: rgba(0,0,0,0.7); align-items: flex-end; justify-content: center; }
+  .notif-panel.open { display: flex; }
+  .notif-sheet { background: var(--bg2); border-radius: 16px 16px 0 0; border-top: 1px solid var(--border2); padding: 24px 20px 40px; width: 100%; max-width: 480px; }
+  .notif-sheet h2 { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+  .notif-sheet p { font-size: 13px; color: var(--text2); margin-bottom: 20px; line-height: 1.5; }
+  .notif-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .notif-row label { font-size: 14px; color: var(--text); }
+  .time-input { background: var(--bg3); border: 1px solid var(--border2); border-radius: var(--radius-sm); color: var(--text); font-family: 'DM Mono', monospace; font-size: 14px; padding: 8px 12px; width: 130px; }
+  .btn-primary { width: 100%; padding: 13px; background: var(--amber); color: #0f0f0f; border: none; border-radius: var(--radius); font-size: 15px; font-weight: 600; cursor: pointer; margin-bottom: 10px; }
+  .btn-ghost { width: 100%; padding: 11px; background: transparent; color: var(--text2); border: 1px solid var(--border2); border-radius: var(--radius); font-size: 14px; cursor: pointer; }
+  .notif-status { font-size: 12px; color: var(--green); margin-top: 12px; text-align: center; display: none; }
+  .notif-status.show { display: block; }
+  .ios-note { font-size: 11px; color: var(--text3); margin-top: 12px; line-height: 1.5; text-align: center; }
+
+  /* Week nav */
+  .week-nav { display: flex; gap: 6px; overflow-x: auto; padding: 14px 20px 0; scrollbar-width: none; }
+  .week-nav::-webkit-scrollbar { display: none; }
+  .week-btn { flex-shrink: 0; padding: 7px 14px; border-radius: 20px; border: 1px solid var(--border2); background: transparent; color: var(--text2); font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 0.04em; cursor: pointer; transition: all 0.15s; }
+  .week-btn.active { background: var(--amber); border-color: var(--amber); color: #0f0f0f; font-weight: 500; }
+  .week-btn.has-progress { border-color: var(--green); color: var(--green); }
+  .week-btn.has-progress.active { background: var(--green); border-color: var(--green); color: #0f0f0f; }
+
+  /* Week content */
+  .week-content { padding: 14px 20px 0; }
+  .week-title { font-size: 17px; font-weight: 600; margin-bottom: 2px; }
+  .week-sub { font-size: 12px; color: var(--text2); margin-bottom: 14px; }
+
+  /* Day cards */
+  .day-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 8px; overflow: hidden; transition: border-color 0.2s; }
+  .day-card.today { border-color: var(--amber); }
+  .day-card.complete { border-color: var(--green); }
+  .day-header { display: flex; align-items: center; gap: 10px; padding: 11px 13px; cursor: pointer; }
+  .day-pill { font-family: 'DM Mono', monospace; font-size: 10px; font-weight: 500; letter-spacing: 0.06em; padding: 3px 7px; border-radius: 4px; flex-shrink: 0; background: var(--bg3); color: var(--text2); text-transform: uppercase; }
+  .day-card.today .day-pill { background: var(--amber-dim); color: var(--amber); }
+  .day-card.complete .day-pill { background: var(--green-dim); color: var(--green); }
+  .day-info { flex: 1; min-width: 0; }
+  .day-name { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .day-type-tag { font-size: 10px; padding: 2px 6px; border-radius: 3px; margin-top: 3px; display: inline-block; }
+  .tag-theory { background: var(--blue-dim); color: var(--blue); }
+  .tag-problems { background: rgba(240,160,48,0.1); color: #c07828; }
+  .tag-review { background: var(--green-dim); color: var(--green); }
+  .tag-exam { background: rgba(224,80,80,0.1); color: var(--red); }
+  .tag-rest { background: var(--bg3); color: var(--text3); }
+  .day-check { width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--border2); flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+  .day-card.complete .day-check { background: var(--green); border-color: var(--green); }
+  .day-check svg { display: none; }
+  .day-card.complete .day-check svg { display: block; }
+  .chevron { font-size: 10px; color: var(--text3); transition: transform 0.2s; flex-shrink: 0; }
+  .day-card.open .chevron { transform: rotate(90deg); }
+  .day-tasks { display: none; padding: 0 13px 13px; }
+  .day-card.open .day-tasks { display: block; }
+  .task-divider { height: 1px; background: var(--border); margin-bottom: 10px; }
+  .task-item { display: flex; align-items: flex-start; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--border); cursor: pointer; user-select: none; }
+  .task-item:last-child { border-bottom: none; }
+  .task-checkbox { width: 18px; height: 18px; border-radius: 4px; border: 1.5px solid var(--border2); flex-shrink: 0; margin-top: 1px; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
+  .task-item.done .task-checkbox { background: var(--amber); border-color: var(--amber); }
+  .task-cb-inner { display: none; }
+  .task-item.done .task-cb-inner { display: block; }
+  .task-text { font-size: 13px; color: var(--text2); line-height: 1.5; flex: 1; }
+  .task-item.done .task-text { color: var(--text3); text-decoration: line-through; }
+
+  /* Install banner */
+  .install-banner { margin: 10px 20px 0; background: var(--blue-dim); border: 1px solid rgba(80,144,224,0.25); border-radius: var(--radius); padding: 11px 14px; display: flex; align-items: center; gap: 10px; cursor: pointer; }
+  .install-banner.hidden { display: none; }
+  .install-icon { font-size: 20px; flex-shrink: 0; }
+  .install-text { flex: 1; }
+  .install-title { font-size: 13px; font-weight: 500; color: var(--blue); }
+  .install-sub { font-size: 11px; color: var(--text2); margin-top: 1px; }
+  .install-close { font-size: 16px; color: var(--text3); padding: 4px; cursor: pointer; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-top">
+    <div>
+      <div class="title">FE Mechanical</div>
+      <div class="subtitle">Study Tracker</div>
+    </div>
+    <div class="header-right">
+      <button class="notif-btn" id="notifBtn" onclick="openNotifPanel()" title="Set daily reminder">🔔</button>
+      <div class="streak-badge" onclick="openNotifPanel()">
+        <div class="streak-num" id="streakNum">0</div>
+        <div class="streak-label">Day streak</div>
+      </div>
+    </div>
+  </div>
+  <div class="progress-row">
+    <span class="progress-label">Overall progress</span>
+    <span class="progress-pct" id="progressPct">0%</span>
+  </div>
+  <div class="progress-track">
+    <div class="progress-fill" id="progressFill" style="width:0%"></div>
+  </div>
+</div>
+
+<!-- Install banner -->
+<div class="install-banner hidden" id="installBanner">
+  <div class="install-icon">📲</div>
+  <div class="install-text">
+    <div class="install-title">Add to home screen</div>
+    <div class="install-sub">Install for notifications + offline access</div>
+  </div>
+  <div class="install-close" onclick="dismissInstall(event)">✕</div>
+</div>
+
+<!-- Notification panel -->
+<div class="notif-panel" id="notifPanel">
+  <div class="notif-sheet">
+    <h2>Daily Study Reminder</h2>
+    <p>Set a time and I'll notify you every day to open the app and check off your tasks. Works best on Android with the app installed to your home screen.</p>
+    <div class="notif-row">
+      <label>Remind me at</label>
+      <input type="time" class="time-input" id="reminderTime" value="19:00">
+    </div>
+    <button class="btn-primary" onclick="saveReminder()">Set reminder</button>
+    <button class="btn-ghost" onclick="closeNotifPanel()">Cancel</button>
+    <div class="notif-status" id="notifStatus">✓ Reminder set — open the app before this time each day to keep it active</div>
+    <div class="ios-note" id="iosNote"></div>
+  </div>
+</div>
+
+<div class="week-nav" id="weekNav"></div>
+<div style="height:8px"></div>
+<div id="mainContent"></div>
+
+<script>
+const WEEKS = [
+  { id:'w1', label:'Wk 1', title:'Week 1 — Mathematics', sub:'6 questions · Fix the 0.0 · ~1.5 hrs/day',
+    days:[
+      {day:'Mon',topic:'Derivatives & integrals — theory',type:'theory',tasks:['Read calc review or watch Engineer4Free: Calculus review','Open FE Handbook → Mathematics section, read derivative/integral tables','Note which formulas you need to find fast vs. know cold','Goal: 20 min reading + 20 min handbook']},
+      {day:'Tue',topic:'Derivatives & integrals — problems',type:'problems',tasks:['Lindeburg: Math chapter — all derivative/integral problems','For every wrong answer: setup, formula, or algebra?','Redo every wrong problem before closing the book','Goal: 45–60 min']},
+      {day:'Wed',topic:'ODEs — theory + handbook',type:'theory',tasks:['Review 1st order ODEs (separable, linear)','Review 2nd order ODEs (characteristic equation)','Handbook: find ODE solution tables, practice reading them','Goal: 30 min reading + 20 min handbook']},
+      {day:'Thu',topic:'ODEs — problems',type:'problems',tasks:['Lindeburg: all ODE problems in the Math chapter','Focus on setting up the equation correctly before solving','Flag anything involving vibrations — shows up in Week 4','Goal: 45–60 min']},
+      {day:'Fri',topic:'Linear algebra + handbook speed drills',type:'theory',tasks:['Review matrix operations, determinants, eigenvalues','Handbook speed drill: find any formula in under 10 sec','Do 10 reps — this builds real exam speed','Goal: 20 min algebra + 20 min drills']},
+      {day:'Sat',topic:'Mixed math review',type:'review',tasks:['Redo every problem you got wrong this week','Do 5 new mixed math problems from Lindeburg','Write the 3 formulas that cost you the most time','Goal: 45 min']},
+      {day:'Sun',topic:'Rest day',type:'rest',tasks:['Full rest — no studying','Optional: casual handbook flip, no pressure']}
+    ]
+  },
+  { id:'w2', label:'Wk 2', title:'Week 2 — Fluid Mechanics', sub:'10 questions · Highest ROI after math · ~1.5 hrs/day',
+    days:[
+      {day:'Mon',topic:'Fluid properties + Bernoulli — theory',type:'theory',tasks:['Review: density, viscosity, pressure, hydrostatics','Study Bernoulli and continuity equations — appear constantly','Handbook: Fluid Mechanics section, locate Bernoulli and energy equations','Goal: 30 min reading + 20 min handbook']},
+      {day:'Tue',topic:'Bernoulli + continuity — problems',type:'problems',tasks:['Lindeburg: Bernoulli and continuity problems','Draw a diagram for every problem — never do fluids in your head','Wrong answers: wrong control volume, or wrong form of equation?','Goal: 50–60 min']},
+      {day:'Wed',topic:'Pipe flow + Moody chart — theory',type:'theory',tasks:['Review Darcy-Weisbach, minor losses, series/parallel pipe systems','Learn to read the Moody chart — practice finding friction factor fast','Work one full pipe flow problem start to finish','Goal: 30 min reading + 20 min practice']},
+      {day:'Thu',topic:'Pipe flow — problems',type:'problems',tasks:['Lindeburg: all pipe flow and head loss problems','Pay attention to units — fluids is full of unit traps','Moody chart: aim to find friction factor in under 60 seconds','Goal: 50–60 min']},
+      {day:'Fri',topic:'Pumps, turbines + Reynolds',type:'theory',tasks:['Review pump/turbine power equations, efficiency, specific speed','Reynolds number: laminar vs turbulent boundary','Lindeburg: pump and Reynolds number problems','Goal: 1 hr combined']},
+      {day:'Sat',topic:'Mixed fluids review',type:'review',tasks:['Redo all wrong answers from the week','8–10 mixed fluids problems timed at 90 sec each','Note which sub-topic is still weakest','Goal: 45–60 min']},
+      {day:'Sun',topic:'Rest day',type:'rest',tasks:['Full rest','Optional: mentally walk through one fluids problem at the gym']}
+    ]
+  },
+  { id:'w3', label:'Wk 3', title:'Week 3 — Statics', sub:'9 questions · Foundational for MoM · ~1.5 hrs/day',
+    days:[
+      {day:'Mon',topic:'FBDs + equilibrium — theory',type:'theory',tasks:['Review forces, moments, equilibrium (ΣF=0, ΣM=0)','Practice drawing clean FBDs — setup makes or breaks statics','Handbook: Statics section, locate equilibrium and moment formulas','Goal: 30 min reading + 20 min handbook']},
+      {day:'Tue',topic:'FBDs + equilibrium — problems',type:'problems',tasks:['Lindeburg: equilibrium problems (beams, brackets, hanging loads)','Draw the FBD before writing a single equation — every time','Your fab background helps here — trust intuition, verify with math','Goal: 50–60 min']},
+      {day:'Wed',topic:'Trusses — theory + problems',type:'theory',tasks:['Review method of joints and method of sections','Know when to use each: joints for all, sections for one member fast','Lindeburg: all truss problems','Goal: 30 min theory + 30 min problems']},
+      {day:'Thu',topic:'Frames, machines + distributed loads',type:'problems',tasks:['Review multi-body problems, pin connections','Distributed load to point load conversion — always do this first','Lindeburg: frames and distributed load problems','Goal: 50–60 min']},
+      {day:'Fri',topic:'Centroids + moments of inertia',type:'theory',tasks:['Review centroid formulas for common shapes','Parallel axis theorem — shows up in beam bending next week too','Handbook: centroid and moment of inertia tables','Goal: 30 min review + 20 min handbook drills']},
+      {day:'Sat',topic:'Mixed statics review',type:'review',tasks:['Redo all wrong answers from the week','8 mixed statics problems timed','Can you draw a correct FBD in under 2 min? That is the target.','Goal: 45–60 min']},
+      {day:'Sun',topic:'Rest day',type:'rest',tasks:['Full rest','3 weeks in — acknowledge the progress, not just the work left']}
+    ]
+  },
+  { id:'w4', label:'Wk 4', title:'Week 4 — Dynamics, Kinematics & Vibrations', sub:'10 questions · Commonly underestimated · ~1.5 hrs/day',
+    days:[
+      {day:'Mon',topic:'Kinematics — theory',type:'theory',tasks:['Review rectilinear motion: position, velocity, acceleration','Review projectile and curvilinear motion','Handbook: Dynamics section, locate kinematic equations','Goal: 30 min reading + 20 min handbook']},
+      {day:'Tue',topic:'Kinematics — problems',type:'problems',tasks:['Lindeburg: all kinematics problems','Write given and unknown before picking an equation — every time','Curvilinear: draw the path, label normal/tangential directions','Goal: 50–60 min']},
+      {day:'Wed',topic:"Newton's 2nd law + work-energy",type:'theory',tasks:["Review F=ma for particles and rigid bodies","Work-energy theorem: when to use vs. Newton's 2nd directly","Lindeburg: Newton's law and work-energy problems","Goal: 30 min theory + 30 min problems"]},
+      {day:'Thu',topic:'Impulse-momentum + rotating bodies',type:'problems',tasks:['Review linear and angular impulse-momentum','Rotating bodies: moment of inertia + angular acceleration','Lindeburg: impulse-momentum and rotation problems','Goal: 50–60 min']},
+      {day:'Fri',topic:'Vibrations — theory + problems',type:'theory',tasks:['Natural frequency: ω = √(k/m) — most tested vibrations concept','Damping ratio, underdamped vs overdamped vs critically damped','Resonance: what happens when forcing freq = natural freq','Lindeburg: all vibrations problems — do not skip these']},
+      {day:'Sat',topic:'Mixed dynamics review',type:'review',tasks:['Redo all wrong answers from the week','8 mixed dynamics problems timed','Vibrations: redo misses until natural frequency feels automatic','Goal: 45–60 min']},
+      {day:'Sun',topic:'Rest day',type:'rest',tasks:['Full rest','Halfway point — you have covered the 4 most critical sections']}
+    ]
+  },
+  { id:'w5', label:'Wk 5', title:'Week 5 — Mechanics of Materials + Heat Transfer', sub:'9 + 7 questions · Close to passing — push over · ~1.5 hrs/day',
+    days:[
+      {day:'Mon',topic:"Stress, strain + Hooke's law — theory",type:'theory',tasks:["Review normal stress (σ=F/A), shear stress, axial strain","Hooke's law, Poisson's ratio, modulus of elasticity","Thermal stress — easy points if you know the formula","Handbook: MoM section, locate stress/strain tables"]},
+      {day:'Tue',topic:'Stress + strain — problems',type:'problems',tasks:["Lindeburg: stress, strain, and Hooke's law problems",'Your machining background gives real intuition — use it','Thermal stress: watch for the αΔT term, it trips people up','Goal: 50–60 min']},
+      {day:'Wed',topic:'Beam bending + shear/moment diagrams',type:'theory',tasks:['Review flexure formula (σ = Mc/I), shear stress in beams','Practice drawing shear and moment diagrams','Handbook: locate flexure formula and section modulus table','Goal: 30 min theory + 30 min practice']},
+      {day:'Thu',topic:'Columns + buckling + torsion',type:'problems',tasks:['Euler buckling load — know which end conditions change effective length','Torsion: τ = Tc/J, angle of twist formula','Lindeburg: columns, buckling, and torsion problems','Goal: 50–60 min']},
+      {day:'Fri',topic:'Heat Transfer — conduction + convection',type:'theory',tasks:["Review Fourier's law (conduction), Newton's law of cooling (convection)",'Composite walls: thermal resistance in series/parallel — like circuits','Handbook: Heat Transfer section, conduction and convection equations','Goal: 30 min reading + 20 min handbook']},
+      {day:'Sat',topic:'Heat Transfer — radiation + fins + MoM review',type:'review',tasks:['Quick review: radiation (Stefan-Boltzmann), fin efficiency','Lindeburg: heat transfer problems (conduction + convection focus)','Redo all wrong MoM answers from the week','Goal: 1 hr']},
+      {day:'Sun',topic:'Rest day',type:'rest',tasks:['Full rest','5 weeks in — the hard foundation work is almost done']}
+    ]
+  },
+  { id:'w6', label:'Wk 6', title:'Week 6 — Measurements, Controls + Probability', sub:'5 + 4 questions · Clean points to lock in · ~1.5 hrs/day',
+    days:[
+      {day:'Mon',topic:'Finish heat transfer problems',type:'problems',tasks:['Lindeburg: finish all heat transfer problems','Heat exchangers: LMTD method — look up in handbook, practice using it','Fins: efficiency tables are in handbook, learn to read them','Goal: 50–60 min']},
+      {day:'Tue',topic:'Measurements + instrumentation',type:'theory',tasks:['Review sensor types (thermocouples, strain gauges, pressure transducers)','Error analysis: accuracy vs precision, systematic vs random','Signal types: analog vs digital, sampling basics','Lindeburg: measurements and instrumentation problems']},
+      {day:'Wed',topic:'Controls — theory + problems',type:'theory',tasks:['Review block diagrams, transfer functions, feedback loops','PID: what each term (P, I, D) does to system response','Stability basics: poles and Bode plots at a high level','Lindeburg: control problems — focus on block diagram reduction']},
+      {day:'Thu',topic:'Probability + statistics',type:'theory',tasks:["Review probability rules, conditional probability, Bayes' theorem",'Distributions: normal, binomial, Poisson — know their handbook entries','Mean, variance, standard deviation problems','Lindeburg: all probability and statistics problems']},
+      {day:'Fri',topic:'Thermo + Material Properties — maintenance',type:'review',tasks:['Quick pass: thermodynamics cycles, steam tables, first/second law','Material Properties: stress-strain curves, hardness, fatigue','Do not drill deeply — just stay warm on the strong sections','Goal: 45 min light review']},
+      {day:'Sat',topic:'Ethics + Engineering Economics',type:'review',tasks:['Ethics: NSPE code, professional responsibility — free points','Econ: time value of money, present/future worth, IRR, payback','Lindeburg: 5 economics problems to stay sharp','Goal: 45 min']},
+      {day:'Sun',topic:'Rest day',type:'rest',tasks:['Full rest — content phase is complete','You have now covered every testable topic']}
+    ]
+  },
+  { id:'w7', label:'Wk 7', title:'Week 7 — Full Exam Simulation', sub:'One real practice exam + deep review · Longer sessions',
+    days:[
+      {day:'Mon',topic:'Pre-exam prep + weak area consolidation',type:'review',tasks:['Review your still-shaky topics from weeks 1–6','Do 10 targeted problems in your weakest area','Handbook speed drill: 15 random formula lookups timed','Goal: 1 hr']},
+      {day:'Tue',topic:'Handbook navigation + formula review',type:'review',tasks:['Go section by section through the FE Handbook — formula pages only','Mark the ones you need to find fast on exam day','Focus: math, fluids, statics, dynamics','Goal: 1 hr']},
+      {day:'Wed',topic:'FULL PRACTICE EXAM — NCEES Official',type:'exam',tasks:['Full exam under real conditions: timed, handbook only, no interruptions','Same time of day as your actual exam if possible','Do not check answers during — finish the full thing first','Block the entire day for this']},
+      {day:'Thu',topic:'Full exam review — wrong answers only',type:'review',tasks:['Go through every wrong answer — do not skim','Categorize each miss: setup / formula / calculation / time pressure','Make a list: which topics had the most misses?','Goal: 1.5–2 hrs']},
+      {day:'Fri',topic:'Deep dive on practice exam weak spots',type:'problems',tasks:['Top 2 topics you missed most — do 10 fresh Lindeburg problems each','This is the most targeted high-value studying you will do','Goal: 1–1.5 hrs']},
+      {day:'Sat',topic:'Secondary weak areas + mixed review',type:'problems',tasks:['10 problems in your next weakest area from the practice exam','Then 10 completely random mixed problems — simulate exam switching','Goal: 1 hr']},
+      {day:'Sun',topic:'Rest day',type:'rest',tasks:['Full rest — you just did your hardest week','Do not study. Seriously.']}
+    ]
+  },
+  { id:'w8', label:'Wk 8', title:'Week 8 — Final Sharpening', sub:'Confidence and pacing — no new topics · Lighter sessions',
+    days:[
+      {day:'Mon',topic:'Second full practice exam — Lindeburg',type:'exam',tasks:['Full Lindeburg practice exam timed — different questions from NCEES','Track time per question — aim under 2 min average','This builds pacing confidence, not new knowledge','Block the day again']},
+      {day:'Tue',topic:'Second exam review + final weak spots',type:'review',tasks:['Review wrong answers — look for patterns vs. Week 7 exam','Same topics showing up? Spend 30 min on those specifically','Goal: 1–1.5 hrs']},
+      {day:'Wed',topic:'Handbook speed + formula drills',type:'review',tasks:['20 timed handbook lookups — under 30 seconds each','Write formulas you keep forgetting from memory, then verify','Should feel easy, not stressful — Goal: 45 min']},
+      {day:'Thu',topic:'Light mixed problems — exam pace only',type:'problems',tasks:['30 mixed problems at full exam pace (90 sec each)','Do not review deeply — just maintain the rhythm','Stop when the 30 are done. Do not keep going.']},
+      {day:'Fri',topic:'Final handbook pass + mental prep',type:'review',tasks:['One last pass: section headers and key formula pages','Write your 5 exam-day reminders (what to do when stuck, time checks)','Goal: 30–45 min — keep it light']},
+      {day:'Sat',topic:'Day before exam — rest and prep',type:'rest',tasks:['No studying beyond a casual 15-min handbook flip if it calms you','Lay out everything you need the night before','Sleep at a normal time — more valuable than any last-minute review','You have done the work. Trust it.']},
+      {day:'Sun',topic:'EXAM DAY',type:'exam',tasks:['Eat a real breakfast','Arrive early — get settled before the clock starts','First 5 min: go to your strongest section, bank early confidence','When stuck: skip, mark, return. Never lose 5 min on one question.']}
+    ]
+  }
+];
+
+const TYPE_LABELS = {theory:'Theory',problems:'Problems',review:'Review',exam:'Exam',rest:'Rest'};
+let currentWeek = 0;
+let openDays = new Set();
+let deferredPrompt = null;
+
+// Storage
+function getStorage() { try { return JSON.parse(localStorage.getItem('fe_tracker')||'{}'); } catch(e) { return {}; } }
+function setStorage(d) { try { localStorage.setItem('fe_tracker', JSON.stringify(d)); } catch(e) {} }
+function taskKey(wi,di,ti) { return `${wi}_${di}_${ti}`; }
+
+function getDayProgress(wi,di) {
+  const data = getStorage(), day = WEEKS[wi].days[di];
+  if (day.type==='rest') return {done:0,total:0,complete:false};
+  const total = day.tasks.length;
+  let done = 0;
+  for (let ti=0;ti<total;ti++) if (data[taskKey(wi,di,ti)]) done++;
+  return {done,total,complete:done===total};
+}
+
+function getWeekProgress(wi) {
+  let done=0,total=0;
+  WEEKS[wi].days.forEach((_,di)=>{ if(WEEKS[wi].days[di].type==='rest')return; const p=getDayProgress(wi,di); done+=p.done; total+=p.total; });
+  return {done,total};
+}
+
+function getTotalProgress() {
+  let done=0,total=0;
+  WEEKS.forEach((_,wi)=>{ const p=getWeekProgress(wi); done+=p.done; total+=p.total; });
+  return {done,total};
+}
+
+function getStreak() {
+  const data = getStorage();
+  let streak=0;
+  for (let wi=0;wi<WEEKS.length;wi++) {
+    let active=false;
+    for (let di=0;di<WEEKS[wi].days.length&&!active;di++) {
+      if(WEEKS[wi].days[di].type==='rest')continue;
+      for (let ti=0;ti<WEEKS[wi].days[di].tasks.length;ti++) {
+        if(data[taskKey(wi,di,ti)]){active=true;break;}
+      }
+    }
+    if(active)streak++; else break;
+  }
+  return streak;
+}
+
+// Render
+function renderNav() {
+  const nav = document.getElementById('weekNav');
+  nav.innerHTML = '';
+  WEEKS.forEach((w,wi) => {
+    const p = getWeekProgress(wi);
+    const btn = document.createElement('button');
+    btn.className = 'week-btn'+(wi===currentWeek?' active':'')+(p.done>0&&wi!==currentWeek?' has-progress':'');
+    btn.textContent = w.label;
+    btn.onclick = ()=>{ currentWeek=wi; renderWeek(); renderNav(); };
+    nav.appendChild(btn);
+  });
+}
+
+function renderWeek() {
+  const w = WEEKS[currentWeek];
+  let html = `<div class="week-content"><div class="week-title">${w.title}</div><div class="week-sub">${w.sub}</div>`;
+  w.days.forEach((day,di) => {
+    const isOpen = openDays.has(`${currentWeek}_${di}`);
+    const p = getDayProgress(currentWeek,di);
+    const complete = p.complete && day.type!=='rest';
+    html += `<div class="day-card${isOpen?' open':''}${complete?' complete':''}" id="dc_${currentWeek}_${di}">
+      <div class="day-header" onclick="toggleDay(${currentWeek},${di})">
+        <div class="day-pill">${day.day}</div>
+        <div class="day-info"><div class="day-name">${day.topic}</div><span class="day-type-tag tag-${day.type}">${TYPE_LABELS[day.type]}</span></div>
+        <div class="day-check"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#0f0f0f" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="day-tasks"><div class="task-divider"></div>`;
+    const data = getStorage();
+    day.tasks.forEach((task,ti) => {
+      const done = !!data[taskKey(currentWeek,di,ti)];
+      html += `<div class="task-item${done?' done':''}" onclick="toggleTask(${currentWeek},${di},${ti})" id="ti_${currentWeek}_${di}_${ti}">
+        <div class="task-checkbox"><svg class="task-cb-inner" width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#0f0f0f" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <div class="task-text">${task}</div>
+      </div>`;
+    });
+    html += `</div></div>`;
+  });
+  html += '</div>';
+  document.getElementById('mainContent').innerHTML = html;
+}
+
+function updateStats() {
+  const t = getTotalProgress();
+  const pct = t.total>0 ? Math.round((t.done/t.total)*100) : 0;
+  document.getElementById('progressPct').textContent = pct+'%';
+  document.getElementById('progressFill').style.width = pct+'%';
+  document.getElementById('streakNum').textContent = getStreak();
+}
+
+function toggleDay(wi,di) {
+  const key = `${wi}_${di}`;
+  if(openDays.has(key)) openDays.delete(key); else openDays.add(key);
+  const card = document.getElementById(`dc_${wi}_${di}`);
+  if(card){ card.classList.toggle('open', openDays.has(key)); }
+}
+
+function toggleTask(wi,di,ti) {
+  const data = getStorage();
+  const key = taskKey(wi,di,ti);
+  data[key] = !data[key];
+  setStorage(data);
+  const el = document.getElementById(`ti_${wi}_${di}_${ti}`);
+  if(el) el.className = 'task-item'+(data[key]?' done':'');
+  const p = getDayProgress(wi,di);
+  const card = document.getElementById(`dc_${wi}_${di}`);
+  if(card) card.classList.toggle('complete', p.complete && WEEKS[wi].days[di].type!=='rest');
+  updateStats(); renderNav();
+}
+
+// Notifications
+function openNotifPanel() { document.getElementById('notifPanel').classList.add('open'); }
+function closeNotifPanel() { document.getElementById('notifPanel').classList.remove('open'); }
+
+async function saveReminder() {
+  const time = document.getElementById('reminderTime').value;
+  if (!time) return;
+  localStorage.setItem('fe_reminder_time', time);
+  const status = document.getElementById('notifStatus');
+  const iosNote = document.getElementById('iosNote');
+
+  if (!('Notification' in window)) {
+    status.textContent = '⚠ Notifications not supported in this browser';
+    status.style.color = 'var(--red)'; status.classList.add('show'); return;
+  }
+
+  const perm = await Notification.requestPermission();
+  if (perm === 'granted') {
+    scheduleNotification(time);
+    document.getElementById('notifBtn').classList.add('active');
+    status.textContent = '✓ Reminder set — open the app before this time each day to keep it active';
+    status.style.color = 'var(--green)'; status.classList.add('show');
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    if (isIOS) {
+      iosNote.textContent = 'iOS: make sure the app is added to your home screen (Share → Add to Home Screen) for notifications to work reliably.';
+    }
+  } else {
+    status.textContent = '⚠ Permission denied — enable notifications in your phone settings for this site';
+    status.style.color = 'var(--red)'; status.classList.add('show');
+  }
+}
+
+function scheduleNotification(timeStr) {
+  if (!('serviceWorker' in navigator)) return;
+  const [h, m] = timeStr.split(':').map(Number);
+  const now = new Date();
+  const target = new Date();
+  target.setHours(h, m, 0, 0);
+  if (target <= now) target.setDate(target.getDate() + 1);
+  const ms = target - now;
+
+  navigator.serviceWorker.ready.then(reg => {
+    reg.active && reg.active.postMessage({
+      type: 'SCHEDULE_NOTIFICATION',
+      ms,
+      title: 'FE Study Time 📐',
+      body: "Open your tracker and check off today's tasks. Keep the streak going."
+    });
+  });
+}
+
+function checkAndReschedule() {
+  const time = localStorage.getItem('fe_reminder_time');
+  if (time && Notification.permission === 'granted') {
+    scheduleNotification(time);
+    document.getElementById('notifBtn').classList.add('active');
+  }
+}
+
+// Install prompt
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault(); deferredPrompt = e;
+  document.getElementById('installBanner').classList.remove('hidden');
+});
+document.getElementById('installBanner').addEventListener('click', e => {
+  if (e.target.classList.contains('install-close')) return;
+  if (deferredPrompt) { deferredPrompt.prompt(); deferredPrompt.userChoice.then(()=>{ deferredPrompt=null; document.getElementById('installBanner').classList.add('hidden'); }); }
+});
+function dismissInstall(e) { e.stopPropagation(); document.getElementById('installBanner').classList.add('hidden'); }
+
+// Service worker registration
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js').then(() => { checkAndReschedule(); }).catch(()=>{});
+}
+
+// Close panel on backdrop click
+document.getElementById('notifPanel').addEventListener('click', function(e) {
+  if(e.target===this) closeNotifPanel();
+});
+
+renderNav(); renderWeek(); updateStats();
+</script>
+</body>
+</html>
